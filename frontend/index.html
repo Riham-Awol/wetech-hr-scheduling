@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Portal - WeTech HR</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .scheduler-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    @media (min-width: 600px) {
+      .scheduler-grid {
+        grid-template-columns: repeat(7, 1fr);
+      }
+    }
+    .scheduler-day-card {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+    .scheduler-day-card.active-day {
+      border-color: var(--accent-color);
+      background: rgba(99, 102, 241, 0.05);
+    }
+    .period-option {
+      display: block;
+      margin: 0.5rem 0;
+      text-align: left;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .period-option input {
+      margin-right: 0.35rem;
+    }
+    .user-profile-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .btn-logout {
+      background-color: transparent;
+      border: 1px solid var(--border-glass);
+      color: var(--text-muted);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: var(--font-family);
+      font-size: 0.85rem;
+      transition: all var(--transition-speed);
+    }
+    .btn-logout:hover {
+      color: var(--text-main);
+      border-color: var(--danger);
+      background-color: var(--danger-bg);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-container">
+        <div class="logo-icon">W</div>
+        <h1>WeTech HR Portal</h1>
+      </div>
+      <div class="user-profile-header">
+        <div style="text-align: right;">
+          <p id="navUserName" style="font-weight: 600; font-size: 0.95rem;"></p>
+          <p id="navUserRole" style="font-size: 0.8rem; color: var(--text-muted);"></p>
+        </div>
+        <button id="logoutBtn" class="btn-logout">Logout</button>
+      </div>
+    </header>
+
+    <nav style="margin-bottom: 2rem;">
+      <a href="index.html" class="active">Employee Portal</a>
+      <a href="dashboard.html" id="navDashboardLink" style="display: none;">HR Dashboard</a>
+      <a href="attendance.html">Clock-In Kiosk</a>
+      <a href="leave.html">Leave Portal</a>
+    </nav>
+
+    <div class="grid-2">
+      <!-- Left column: Active Session & Clock console -->
+      <div>
+        <div class="card clock-card">
+          <div class="clock-time" id="liveClock">00:00:00</div>
+          <div class="clock-date" id="liveDate">Sunday, June 14, 2026</div>
+          
+          <div id="attendanceStatus" style="margin-bottom: 1.5rem; font-weight: 500;">
+            Checking attendance status...
+          </div>
+
+          <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button id="clockInBtn" class="btn btn-success" disabled>Clock In</button>
+            <button id="clockOutBtn" class="btn btn-danger" disabled>Clock Out</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Apply for Leave</h2>
+          <form id="leaveForm">
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="leaveType">Leave Type</label>
+                <select id="leaveType" class="form-control" required>
+                  <option value="Vacation">Vacation</option>
+                  <option value="Sick">Sick Leave</option>
+                  <option value="Personal">Personal Leave</option>
+                  <option value="Maternity/Paternity">Maternity/Paternity</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="startDate">Start Date</label>
+                <input type="date" id="startDate" class="form-control" required>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="endDate">End Date</label>
+                <input type="date" id="endDate" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="leaveReason">Reason / Notes</label>
+                <input type="text" id="leaveReason" class="form-control" placeholder="E.g. Medical checkup" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Request</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Right column: Schedule planner -->
+      <div>
+        <div class="card">
+          <h2 class="card-title">My Schedule Rules</h2>
+          <div id="roleRulesBanner" style="padding: 1rem; border-radius: 8px; background-color: var(--bg-secondary); margin-bottom: 1rem;">
+            <!-- Render rules dynamically based on role -->
+          </div>
+          <div id="todayScheduleOverview" style="margin-top: 0.5rem;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <h2 class="card-title" style="margin-bottom: 0;">Weekly Schedule Builder</h2>
+            <div>
+              <label for="weekSelector" style="font-size: 0.8rem; color: var(--text-muted); display: block;">Select Roster Week</label>
+              <select id="weekSelector" class="form-control" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; width: auto;">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+          
+          <form id="schedulerForm">
+            <div class="scheduler-grid" id="schedulerGrid">
+              <!-- Render days dynamically -->
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;">Save Weekly Schedule</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification container -->
+  <div id="toast">
+    <div id="toastMessage">Success</div>
+  </div>
+
+  <script>
+    const API_URL = '/api';
+
+    // Auth validation
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      window.location.href = 'login.html';
+    }
+    const currentUser = JSON.parse(userStr);
+
+    // Populate profile details
+    document.getElementById('navUserName').textContent = `${currentUser.first_name} ${currentUser.last_name}`;
+    document.getElementById('navUserRole').textContent = currentUser.role;
+    
+    // Check if HR
+    const isHR = currentUser.role && currentUser.role.toLowerCase().includes('hr');
+    const isDeveloper = currentUser.role && (currentUser.role.toLowerCase().includes('engineer') || currentUser.role.toLowerCase().includes('developer'));
+    
+    if (isHR) {
+      document.getElementById('navDashboardLink').style.display = 'inline-block';
+    }
+
+    // Render roles constraints
+    const rulesBanner = document.getElementById('roleRulesBanner');
+    if (isDeveloper) {
+      rulesBanner.innerHTML = `
+        <p style="color: var(--success); font-weight: 600; margin-bottom: 0.25rem;">Role Class: Developer / Engineer</p>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Minimum validation rules: You must schedule at least <strong>3 days</strong> a week. Each day must contain at least <strong>1 period</strong>.</p>
+      `;
+    } else {
+      rulesBanner.innerHTML = `
+        <p style="color: var(--info); font-weight: 600; margin-bottom: 0.25rem;">Role Class: General Staff</p>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Minimum validation rules: You must schedule at least <strong>5 days</strong> a week. Each day must contain at least <strong>2 periods</strong>.</p>
+      `;
+    }
+
+    // Elements
+    const liveClock = document.getElementById('liveClock');
+    const liveDate = document.getElementById('liveDate');
+    const clockInBtn = document.getElementById('clockInBtn');
+    const clockOutBtn = document.getElementById('clockOutBtn');
+    const attendanceStatus = document.getElementById('attendanceStatus');
+    const leaveForm = document.getElementById('leaveForm');
+    const schedulerGrid = document.getElementById('schedulerGrid');
+    const weekSelector = document.getElementById('weekSelector');
+    const todayScheduleOverview = document.getElementById('todayScheduleOverview');
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toastMessage');
+
+    // Run clock updates
+    function updateClock() {
+      const now = new Date();
+      liveClock.textContent = now.toTimeString().split(' ')[0];
+      
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      liveDate.textContent = now.toLocaleDateString('en-US', options);
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Show toast message
+    function showToast(message, type = 'success') {
+      toastMessage.textContent = message;
+      toast.className = 'show';
+      if (type === 'error') {
+        toast.style.borderLeftColor = 'var(--danger)';
+      } else {
+        toast.style.borderLeftColor = 'var(--success)';
+      }
+      setTimeout(() => {
+        toast.className = '';
+      }, 3500);
+    }
+
+    // Logout handler
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      window.location.href = 'login.html';
+    });
+
+    // Populate week choices (Current week and Next week)
+    function setupWeekSelector() {
+      const getMonday = (d) => {
+        d = new Date(d);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(d.setDate(diff));
+      };
+
+      const startOfThisWeek = getMonday(new Date());
+      const startOfNextWeek = new Date(startOfThisWeek.getTime() + 7 * 86400000);
+
+      const optThis = document.createElement('option');
+      optThis.value = startOfThisWeek.toISOString().split('T')[0];
+      optThis.textContent = `Current Week (Starts Mon, ${startOfThisWeek.getMonth()+1}/${startOfThisWeek.getDate()})`;
+
+      const optNext = document.createElement('option');
+      optNext.value = startOfNextWeek.toISOString().split('T')[0];
+      optNext.textContent = `Next Week (Starts Mon, ${startOfNextWeek.getMonth()+1}/${startOfNextWeek.getDate()})`;
+
+      weekSelector.appendChild(optThis);
+      weekSelector.appendChild(optNext);
+
+      weekSelector.addEventListener('change', () => {
+        renderSchedulerDays();
+        loadExistingSchedules();
+      });
+    }
+
+    // Get dates array for selected week Monday-Sunday
+    function getWeekDates() {
+      const baseDate = new Date(weekSelector.value);
+      const dates = [];
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(baseDate.getTime() + i * 86400000);
+        dates.push({
+          dateStr: date.toISOString().split('T')[0],
+          dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          displayDate: `${date.getMonth()+1}/${date.getDate()}`
+        });
+      }
+      return dates;
+    }
+
+    // Periods Constants
+    const PERIODS = [
+      { id: 1, label: '2am - 11am', start: '02:00', end: '11:00' },
+      { id: 2, label: '11am - 2pm', start: '11:00', end: '14:00' },
+      { id: 3, label: '2pm - 5pm', start: '14:00', end: '17:00' }
+    ];
+
+    // Render days in scheduler grid
+    function renderSchedulerDays() {
+      const dates = getWeekDates();
+      schedulerGrid.innerHTML = '';
+      
+      dates.forEach(d => {
+        const dayCard = document.createElement('div');
+        dayCard.className = 'scheduler-day-card';
+        dayCard.id = `dayCard_${d.dateStr}`;
+        
+        let periodsHtml = '';
+        PERIODS.forEach(p => {
+          periodsHtml += `
+            <label class="period-option">
+              <input type="checkbox" name="period_${d.dateStr}" value="${p.id}" data-start="${p.start}" data-end="${p.end}" onchange="toggleDayHighlight('${d.dateStr}')">
+              ${p.label}
+            </label>
+          `;
+        });
+
+        dayCard.innerHTML = `
+          <p style="font-weight:600; font-size: 0.95rem; margin-bottom: 0.25rem;">${d.dayName}</p>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">${d.displayDate}</p>
+          <div style="border-top: 1px solid var(--border-glass); padding-top:0.25rem;">
+            ${periodsHtml}
+          </div>
+        `;
+        schedulerGrid.appendChild(dayCard);
+      });
+    }
+
+    // Toggle highlight on card when period is checked
+    window.toggleDayHighlight = function(dateStr) {
+      const card = document.getElementById(`dayCard_${dateStr}`);
+      const checks = document.querySelectorAll(`input[name="period_${dateStr}"]:checked`);
+      if (checks.length > 0) {
+        card.classList.add('active-day');
+      } else {
+        card.classList.remove('active-day');
+      }
+    };
+
+    // Load existing schedules into scheduler builder
+    async function loadExistingSchedules() {
+      try {
+        const res = await fetch(`${API_URL}/schedules?employee_id=${currentUser.id}`);
+        const schedules = await res.json();
+        
+        // Clear previous checked periods in UI
+        document.querySelectorAll('.scheduler-day-card input[type="checkbox"]').forEach(cb => {
+          cb.checked = false;
+        });
+        document.querySelectorAll('.scheduler-day-card').forEach(c => c.classList.remove('active-day'));
+
+        // Check values matching schedule dates
+        schedules.forEach(s => {
+          const checks = document.querySelectorAll(`input[name="period_${s.date}"]`);
+          checks.forEach(cb => {
+            if (cb.dataset.start === s.shift_start && cb.dataset.end === s.shift_end) {
+              cb.checked = true;
+              toggleDayHighlight(s.date);
+            }
+          });
+        });
+      } catch (err) {
+        console.error('Error loading existing schedules:', err);
+      }
+    }
+
+    // Submit schedule choice
+    document.getElementById('schedulerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const dates = getWeekDates();
+      const payloadSchedules = [];
+      const scheduledDaysData = {}; // key: dateStr, value: list of periods
+
+      dates.forEach(d => {
+        const checkedOptions = document.querySelectorAll(`input[name="period_${d.dateStr}"]:checked`);
+        if (checkedOptions.length > 0) {
+          scheduledDaysData[d.dateStr] = [];
+          checkedOptions.forEach(opt => {
+            scheduledDaysData[d.dateStr].push({
+              start: opt.dataset.start,
+              end: opt.dataset.end
+            });
+            
+            payloadSchedules.push({
+              date: d.dateStr,
+              shift_start: opt.dataset.start,
+              shift_end: opt.dataset.end,
+              status: 'Scheduled'
+            });
+          });
+        }
+      });
+
+      const uniqueDayCount = Object.keys(scheduledDaysData).length;
+
+      // Validation Checks Client-side
+      if (isDeveloper) {
+        // Developers: >= 3 days, >= 1 period per day
+        if (uniqueDayCount < 3) {
+          showToast('Developers must schedule at least 3 days a week.', 'error');
+          return;
+        }
+      } else {
+        // Staff: >= 5 days, >= 2 periods per day
+        if (uniqueDayCount < 5) {
+          showToast('Staff must schedule at least 5 days a week.', 'error');
+          return;
+        }
+        for (let date in scheduledDaysData) {
+          if (scheduledDaysData[date].length < 2) {
+            showToast(`You must schedule at least 2 periods for ${date}.`, 'error');
+            return;
+          }
+        }
+      }
+
+      // Save schedules
+      try {
+        const res = await fetch(`${API_URL}/schedules/bulk`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            employee_id: currentUser.id,
+            schedules: payloadSchedules
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Weekly schedule updated successfully!');
+          fetchEmployeeTodayStatus();
+          fetchEmployeeTodayScheduleOverview();
+        } else {
+          showToast(data.error || 'Failed to update schedule.', 'error');
+        }
+      } catch (err) {
+        showToast('Server connection error.', 'error');
+      }
+    });
+
+    // Query active clock-in/out status
+    async function fetchEmployeeTodayStatus() {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`${API_URL}/attendance?employee_id=${currentUser.id}&date=${today}`);
+        const records = await res.json();
+        
+        if (records.length > 0) {
+          const record = records[0];
+          if (record.clock_out) {
+            attendanceStatus.innerHTML = `<span class="badge badge-success">Completed</span> Clocked in at ${formatTime(record.clock_in)} and out at ${formatTime(record.clock_out)}`;
+            clockInBtn.disabled = true;
+            clockOutBtn.disabled = true;
+          } else {
+            attendanceStatus.innerHTML = `<span class="live-dot"></span> Clocked in at ${formatTime(record.clock_in)}. Active session...`;
+            clockInBtn.disabled = true;
+            clockOutBtn.disabled = false;
+          }
+        } else {
+          attendanceStatus.innerHTML = '<span class="badge badge-warning">Not Clocked In</span> Ready for check-in.';
+          clockInBtn.disabled = false;
+          clockOutBtn.disabled = true;
+        }
+      } catch (err) {
+        console.error('Error fetching attendance status:', err);
+      }
+    }
+
+    // Retrieve schedule details for today overview
+    async function fetchEmployeeTodayScheduleOverview() {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`${API_URL}/schedules?employee_id=${currentUser.id}&date=${today}`);
+        const schedules = await res.json();
+
+        if (schedules.length > 0) {
+          let shiftsList = schedules.map(s => `<strong>${s.shift_start} - ${s.shift_end}</strong> (${s.status})`).join(', ');
+          todayScheduleOverview.innerHTML = `
+            <p style="color: var(--text-main);">Today's Scheduled Shifts: ${shiftsList}</p>
+          `;
+        } else {
+          todayScheduleOverview.innerHTML = '<p style="color: var(--warning);">No schedules scheduled for today.</p>';
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Helper: format full date string to show HH:MM
+    function formatTime(dateTimeStr) {
+      if (!dateTimeStr) return '';
+      const parts = dateTimeStr.split(' ');
+      return parts.length > 1 ? parts[1] : dateTimeStr;
+    }
+
+    // Clock In Handler
+    clockInBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${API_URL}/attendance/clock-in`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_id: currentUser.id })
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+          showToast(`Clocked in successfully at ${formatTime(data.time)}!`);
+          fetchEmployeeTodayStatus();
+        } else {
+          showToast(data.error || 'Clock in failed.', 'error');
+        }
+      } catch (err) {
+        showToast('Error during clock in.', 'error');
+      }
+    });
+
+    // Clock Out Handler
+    clockOutBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${API_URL}/attendance/clock-out`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_id: currentUser.id })
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+          showToast(`Clocked out successfully at ${formatTime(data.time)}!`);
+          fetchEmployeeTodayStatus();
+        } else {
+          showToast(data.error || 'Clock out failed.', 'error');
+        }
+      } catch (err) {
+        showToast('Error during clock out.', 'error');
+      }
+    });
+
+    // Leave form handler
+    leaveForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = {
+        employee_id: currentUser.id,
+        leave_type: document.getElementById('leaveType').value,
+        start_date: document.getElementById('startDate').value,
+        end_date: document.getElementById('endDate').value,
+        reason: document.getElementById('leaveReason').value
+      };
+
+      try {
+        const res = await fetch(`${API_URL}/leaves`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+          showToast('Leave request submitted successfully!');
+          leaveForm.reset();
+          setDefaultDates();
+        } else {
+          showToast(data.error || 'Failed to submit leave.', 'error');
+        }
+      } catch (err) {
+        showToast('Error submitting leave request.', 'error');
+      }
+    });
+
+    function setDefaultDates() {
+      const todayStr = new Date().toISOString().split('T')[0];
+      document.getElementById('startDate').value = todayStr;
+      document.getElementById('endDate').value = todayStr;
+    }
+
+    // Initial load
+    setDefaultDates();
+    setupWeekSelector();
+    renderSchedulerDays();
+    loadExistingSchedules();
+    fetchEmployeeTodayStatus();
+    fetchEmployeeTodayScheduleOverview();
+  </script>
+</body>
+</html>

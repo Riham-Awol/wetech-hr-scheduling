@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Kiosk - WeTech HR</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .kiosk-card {
+      max-width: 500px;
+      margin: 2rem auto;
+      text-align: center;
+    }
+    .kiosk-btn {
+      font-size: 1.1rem;
+      padding: 1rem 2rem;
+      flex: 1;
+    }
+    .user-profile-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .btn-logout {
+      background-color: transparent;
+      border: 1px solid var(--border-glass);
+      color: var(--text-muted);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: var(--font-family);
+      font-size: 0.85rem;
+      transition: all var(--transition-speed);
+    }
+    .btn-logout:hover {
+      color: var(--text-main);
+      border-color: var(--danger);
+      background-color: var(--danger-bg);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-container">
+        <div class="logo-icon">W</div>
+        <h1>Attendance Portal</h1>
+      </div>
+      <div class="user-profile-header">
+        <div style="text-align: right;">
+          <p id="navUserName" style="font-weight: 600; font-size: 0.95rem;"></p>
+          <p id="navUserRole" style="font-size: 0.8rem; color: var(--text-muted);"></p>
+        </div>
+        <button id="logoutBtn" class="btn-logout">Logout</button>
+      </div>
+    </header>
+
+    <nav style="margin-bottom: 2rem;">
+      <a href="index.html">Employee Portal</a>
+      <a href="dashboard.html" id="navDashboardLink" style="display: none;">HR Dashboard</a>
+      <a href="attendance.html" class="active">Clock-In Kiosk</a>
+      <a href="leave.html">Leave Portal</a>
+    </nav>
+
+    <div class="card kiosk-card">
+      <div class="clock-time" id="kioskClock" style="font-size: 4rem;">00:00:00</div>
+      <div class="clock-date" id="kioskDate">Sunday, June 14, 2026</div>
+
+      <div style="border-top: 1px solid var(--border-glass); margin: 1.5rem 0; padding-top: 1.5rem;">
+        <h3 id="welcomeMsg" style="margin-bottom: 0.5rem; font-weight: 600;">Welcome, Employee</h3>
+        <p id="kioskStatusText" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Checking status...</p>
+
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+          <button id="kioskClockIn" class="btn btn-success kiosk-btn" disabled>Clock In</button>
+          <button id="kioskClockOut" class="btn btn-danger kiosk-btn" disabled>Clock Out</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Personal Activity Feed -->
+    <div class="card" style="max-width: 800px; margin: 0 auto;">
+      <h2 class="card-title">My Clock Logs</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Clock In</th>
+              <th>Clock Out</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="kioskLogsBody">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification container -->
+  <div id="toast">
+    <div id="toastMessage">Success</div>
+  </div>
+
+  <script>
+    const API_URL = '/api';
+
+    // Auth check
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      window.location.href = 'login.html';
+    }
+    const currentUser = JSON.parse(userStr);
+
+    // Profile headers
+    document.getElementById('navUserName').textContent = `${currentUser.first_name} ${currentUser.last_name}`;
+    document.getElementById('navUserRole').textContent = currentUser.role;
+    document.getElementById('welcomeMsg').textContent = `Welcome back, ${currentUser.first_name}!`;
+    
+    // Check if HR
+    const isHR = currentUser.role && currentUser.role.toLowerCase().includes('hr');
+    if (isHR) {
+      document.getElementById('navDashboardLink').style.display = 'inline-block';
+    }
+
+    // Elements
+    const kioskClock = document.getElementById('kioskClock');
+    const kioskDate = document.getElementById('kioskDate');
+    const kioskClockIn = document.getElementById('kioskClockIn');
+    const kioskClockOut = document.getElementById('kioskClockOut');
+    const kioskStatusText = document.getElementById('kioskStatusText');
+    const kioskLogsBody = document.getElementById('kioskLogsBody');
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toastMessage');
+
+    // Run clock updates
+    function updateClock() {
+      const now = new Date();
+      kioskClock.textContent = now.toTimeString().split(' ')[0];
+      
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      kioskDate.textContent = now.toLocaleDateString('en-US', options);
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Show toast message
+    function showToast(message, type = 'success') {
+      toastMessage.textContent = message;
+      toast.className = 'show';
+      if (type === 'error') {
+        toast.style.borderLeftColor = 'var(--danger)';
+      } else {
+        toast.style.borderLeftColor = 'var(--success)';
+      }
+      setTimeout(() => {
+        toast.className = '';
+      }, 3500);
+    }
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      window.location.href = 'login.html';
+    });
+
+    // Format Dates/Times
+    function formatTime(dateTimeStr) {
+      if (!dateTimeStr) return '';
+      const parts = dateTimeStr.split(' ');
+      return parts.length > 1 ? parts[1] : dateTimeStr;
+    }
+
+    // Check clock status for current employee
+    async function checkKioskStatus() {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`${API_URL}/attendance?employee_id=${currentUser.id}&date=${today}`);
+        const records = await res.json();
+
+        if (records.length > 0) {
+          const record = records[0];
+          if (record.clock_out) {
+            kioskClockIn.disabled = true;
+            kioskClockOut.disabled = true;
+            kioskStatusText.innerHTML = `<span class="badge badge-success">Completed</span> Shift completed today.`;
+          } else {
+            kioskClockIn.disabled = true;
+            kioskClockOut.disabled = false;
+            kioskStatusText.innerHTML = `<span class="live-dot" style="margin-right:0.25rem;"></span> Active session. Clocked in at ${formatTime(record.clock_in)}.`;
+          }
+        } else {
+          kioskClockIn.disabled = false;
+          kioskClockOut.disabled = true;
+          kioskStatusText.innerHTML = `Not clocked in today. Ready for check-in.`;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Load personal logs
+    async function loadRecentLogs() {
+      try {
+        const res = await fetch(`${API_URL}/attendance?employee_id=${currentUser.id}`);
+        const logs = await res.json();
+
+        kioskLogsBody.innerHTML = '';
+        if (logs.length === 0) {
+          kioskLogsBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-muted);">No clock history found.</td></tr>';
+          return;
+        }
+
+        logs.forEach(log => {
+          let badgeClass = 'badge-success';
+          if (log.status === 'Late') badgeClass = 'badge-warning';
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${log.date}</td>
+            <td>${formatTime(log.clock_in)}</td>
+            <td>${log.clock_out ? formatTime(log.clock_out) : '<span style="color:var(--info);">Active...</span>'}</td>
+            <td><span class="badge ${badgeClass}">${log.status}</span></td>
+          `;
+          kioskLogsBody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Action Handlers
+    kioskClockIn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${API_URL}/attendance/clock-in`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_id: currentUser.id })
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+          showToast(`Clocked in successfully!`);
+          checkKioskStatus();
+          loadRecentLogs();
+        } else {
+          showToast(data.error || 'Clock-in failed.', 'error');
+        }
+      } catch (err) {
+        showToast('Server connection error.', 'error');
+      }
+    });
+
+    kioskClockOut.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${API_URL}/attendance/clock-out`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_id: currentUser.id })
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+          showToast(`Clocked out successfully!`);
+          checkKioskStatus();
+          loadRecentLogs();
+        } else {
+          showToast(data.error || 'Clock-out failed.', 'error');
+        }
+      } catch (err) {
+        showToast('Server connection error.', 'error');
+      }
+    });
+
+    // Initial load
+    checkKioskStatus();
+    loadRecentLogs();
+  </script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leave Management - WeTech HR</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .user-profile-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .btn-logout {
+      background-color: transparent;
+      border: 1px solid var(--border-glass);
+      color: var(--text-muted);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: var(--font-family);
+      font-size: 0.85rem;
+      transition: all var(--transition-speed);
+    }
+    .btn-logout:hover {
+      color: var(--text-main);
+      border-color: var(--danger);
+      background-color: var(--danger-bg);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-container">
+        <div class="logo-icon">W</div>
+        <h1>Leave Request Portal</h1>
+      </div>
+      <div class="user-profile-header">
+        <div style="text-align: right;">
+          <p id="navUserName" style="font-weight: 600; font-size: 0.95rem;"></p>
+          <p id="navUserRole" style="font-size: 0.8rem; color: var(--text-muted);"></p>
+        </div>
+        <button id="logoutBtn" class="btn-logout">Logout</button>
+      </div>
+    </header>
+
+    <nav style="margin-bottom: 2rem;">
+      <a href="index.html">Employee Portal</a>
+      <a href="dashboard.html" id="navDashboardLink" style="display: none;">HR Dashboard</a>
+      <a href="attendance.html">Clock-In Kiosk</a>
+      <a href="leave.html" class="active">Leave Portal</a>
+    </nav>
+
+    <div class="grid-2">
+      <!-- Submit Leave Request -->
+      <div class="card">
+        <h2 class="card-title">New Leave Request</h2>
+        <form id="leavePortalForm">
+          <div class="form-group">
+            <label for="leaveType">Leave Category</label>
+            <select id="leaveType" class="form-control" required>
+              <option value="Vacation">Vacation</option>
+              <option value="Sick">Sick Leave</option>
+              <option value="Personal">Personal Leave</option>
+              <option value="Maternity/Paternity">Maternity/Paternity</option>
+            </select>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="leaveStart">Start Date</label>
+              <input type="date" id="leaveStart" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="leaveEnd">End Date</label>
+              <input type="date" id="leaveEnd" class="form-control" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="leaveReason">Reason for Leave</label>
+            <textarea id="leaveReason" class="form-control" rows="3" placeholder="Brief explanation..." required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Request</button>
+        </form>
+      </div>
+
+      <!-- Historical Requests for the Employee -->
+      <div>
+        <div class="card">
+          <h2 class="card-title" id="historyTitle">My Leave History</h2>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date Range</th>
+                  <th>Category</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="historyLogsBody">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification container -->
+  <div id="toast">
+    <div id="toastMessage">Success</div>
+  </div>
+
+  <script>
+    const API_URL = '/api';
+
+    // Auth validation
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      window.location.href = 'login.html';
+    }
+    const currentUser = JSON.parse(userStr);
+
+    // Profile headers
+    document.getElementById('navUserName').textContent = `${currentUser.first_name} ${currentUser.last_name}`;
+    document.getElementById('navUserRole').textContent = currentUser.role;
+    
+    // Check if HR
+    const isHR = currentUser.role && currentUser.role.toLowerCase().includes('hr');
+    if (isHR) {
+      document.getElementById('navDashboardLink').style.display = 'inline-block';
+    }
+
+    // Elements
+    const leavePortalForm = document.getElementById('leavePortalForm');
+    const historyLogsBody = document.getElementById('historyLogsBody');
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toastMessage');
+
+    // Show toast message
+    function showToast(message, type = 'success') {
+      toastMessage.textContent = message;
+      toast.className = 'show';
+      if (type === 'error') {
+        toast.style.borderLeftColor = 'var(--danger)';
+      } else {
+        toast.style.borderLeftColor = 'var(--success)';
+      }
+      setTimeout(() => {
+        toast.className = '';
+      }, 3500);
+    }
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      window.location.href = 'login.html';
+    });
+
+    // Fetch leave history for logged employee
+    async function loadLeaveHistory() {
+      try {
+        const res = await fetch(`${API_URL}/leaves?employee_id=${currentUser.id}`);
+        const leaves = await res.json();
+
+        historyLogsBody.innerHTML = '';
+        if (leaves.length === 0) {
+          historyLogsBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No leave applications found.</td></tr>';
+          return;
+        }
+
+        leaves.forEach(l => {
+          let badgeClass = 'badge-warning';
+          if (l.status === 'Approved') badgeClass = 'badge-success';
+          else if (l.status === 'Rejected') badgeClass = 'badge-danger';
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${l.start_date}</strong> to <strong>${l.end_date}</strong></td>
+            <td>${l.leave_type}</td>
+            <td><em>${l.reason || 'N/A'}</em></td>
+            <td><span class="badge ${badgeClass}">${l.status}</span></td>
+          `;
+          historyLogsBody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Submit leave request handler
+    leavePortalForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = {
+        employee_id: currentUser.id,
+        leave_type: document.getElementById('leaveType').value,
+        start_date: document.getElementById('leaveStart').value,
+        end_date: document.getElementById('leaveEnd').value,
+        reason: document.getElementById('leaveReason').value
+      };
+
+      try {
+        const res = await fetch(`${API_URL}/leaves`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        
+        if (res.ok) {
+          showToast('Leave request submitted successfully!');
+          document.getElementById('leaveReason').value = '';
+          loadLeaveHistory();
+        } else {
+          const data = await res.json();
+          showToast(data.error || 'Failed to submit leave.', 'error');
+        }
+      } catch (err) {
+        showToast('Server connection error.', 'error');
+      }
+    });
+
+    // Default dates setting
+    const todayStr = new Date().toISOString().split('T')[0];
+    document.getElementById('leaveStart').value = todayStr;
+    document.getElementById('leaveEnd').value = todayStr;
+
+    // Load initial data
+    loadLeaveHistory();
+  </script>
+</body>
+</html>

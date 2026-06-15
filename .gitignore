@@ -1,0 +1,4 @@
+backend/node_modules
+backend/hr_schedule.db
+backend/.env
+frontend/.vercel
