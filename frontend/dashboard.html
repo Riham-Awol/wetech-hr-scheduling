@@ -128,7 +128,7 @@
             <h2 class="card-title" style="margin-bottom: 0;">Master Roster Shifts</h2>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">Shift schedules set by employees themselves via their portals.</p>
           </div>
-          <a href="/api/export/schedules" class="btn btn-secondary">Export to CSV</a>
+          <a id="exportSchedulesLink" href="#" class="btn btn-secondary">Export to CSV</a>
         </div>
         <div class="card">
           <div class="table-responsive">
@@ -157,7 +157,7 @@
           <div>
             <h2 class="card-title" style="margin-bottom: 0;">Clock-in/Clock-out Logs</h2>
           </div>
-          <a href="/api/export/attendance" class="btn btn-secondary">Export to CSV</a>
+          <a id="exportAttendanceLink" href="#" class="btn btn-secondary">Export to CSV</a>
         </div>
 
         <div class="card">
@@ -281,7 +281,9 @@
   </div>
 
   <script>
-    const API_URL = '/api';
+    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'http://localhost:5000/api'
+      : 'https://wetech-hr-backend.onrender.com/api';
 
     // Authentication Checks
     const userStr = localStorage.getItem('user');
@@ -305,6 +307,8 @@
       document.getElementById('navUserRole').textContent = currentUser.role;
       
       // Run Initial Loads
+      document.getElementById('exportSchedulesLink').href = `${API_URL}/export/schedules`;
+      document.getElementById('exportAttendanceLink').href = `${API_URL}/export/attendance`;
       loadDashboardData();
     }
 

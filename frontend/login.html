@@ -80,6 +80,10 @@
   </div>
 
   <script>
+    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'http://localhost:5000/api'
+      : 'https://wetech-hr-backend.onrender.com/api';
+
     const loginForm = document.getElementById('loginForm');
     const loginError = document.getElementById('loginError');
 
@@ -102,7 +106,7 @@
       const password = document.getElementById('password').value;
 
       try {
-        const res = await fetch('/api/employees/login', {
+        const res = await fetch(`${API_URL}/employees/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
